@@ -30,8 +30,8 @@ import net.minecraftforge.event.entity.player.PlayerEvent; // Added import
 import net.minecraftforge.fml.network.PacketDistributor; // Added import
 import net.minecraft.entity.player.ServerPlayerEntity; // Added import
 import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
+import net.minecraft.potion.EffectInstance;
+import net.minecraft.potion.Effects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -177,18 +177,18 @@ public class ExampleMod
                     
                     // Уровень > 95%
                     if (currentBladderLevel > 95.0f) {
-                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, effectDuration, 1, false, true)); // Замедление II
-                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.CONFUSION, effectDuration, 0, false, false));       // Тошнота
+                        serverPlayer.addEffect(new EffectInstance(Effects.MOVEMENT_SLOWDOWN, effectDuration, 1, false, true)); // Замедление II
+                        serverPlayer.addEffect(new EffectInstance(Effects.CONFUSION, effectDuration, 0, false, false));       // Тошнота
                     } 
                     // Уровень > 85% и <= 95%
                     else if (currentBladderLevel > 85.0f) {
-                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, effectDuration, 0, false, true)); // Замедление I
+                        serverPlayer.addEffect(new EffectInstance(Effects.MOVEMENT_SLOWDOWN, effectDuration, 0, false, true)); // Замедление I
                         // Даем Тошноту, но короче, если хотим чтобы она была менее навязчивой на этом уровне
-                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.CONFUSION, effectDuration / 2, 0, false, false)); 
+                        serverPlayer.addEffect(new EffectInstance(Effects.CONFUSION, effectDuration / 2, 0, false, false)); 
                     } 
                     // Уровень > 70% и <= 85%
                     else if (currentBladderLevel > 70.0f) {
-                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, effectDuration, 0, false, false)); // Замедление I (без частиц)
+                        serverPlayer.addEffect(new EffectInstance(Effects.MOVEMENT_SLOWDOWN, effectDuration, 0, false, false)); // Замедление I (без частиц)
                     }
                     // Если уровень <= 70%, эффекты, наложенные этим модом, должны сами истечь,
                     // так как мы их не обновляем. Если игрок выпил молоко или умер, они также снимутся.

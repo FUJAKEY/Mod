@@ -9,10 +9,10 @@ import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.lwjgl.glfw.GLFW;
-import net.minecraft.world.entity.player.PlayerEntity;
-import net.minecraft.client.multiplayer.ClientLevel; // Corrected import in original was ClientWorld
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.particles.ParticleTypes;
 import com.example.examplemod.client.ClientBladderData;
 
 public class KeyInputHandler {
@@ -61,13 +61,13 @@ public class KeyInputHandler {
 
             if (isPeeingKeyDownNow && ClientBladderData.currentBladderLevel > 0 && Minecraft.getInstance().player != null && Minecraft.getInstance().level != null) {
                 PlayerEntity player = Minecraft.getInstance().player;
-                ClientLevel world = Minecraft.getInstance().level; // Corrected from ClientWorld
+                ClientWorld world = Minecraft.getInstance().level;
 
                 double forwardOffset = 0.4; 
                 double upwardOffset = player.getEyeHeight() * 0.3; 
                 double particleSpeedMultiplier = 0.2;
 
-                Vec3 lookVector = player.getViewVector(1.0F);
+                Vector3d lookVector = player.getViewVector(1.0F);
                 
                 double baseX = player.getX() + lookVector.x * forwardOffset;
                 double baseY = player.getY() + upwardOffset;
