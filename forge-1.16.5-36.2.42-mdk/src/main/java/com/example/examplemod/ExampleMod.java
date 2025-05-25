@@ -1,5 +1,8 @@
 package com.example.examplemod;
 
+import net.minecraft.client.settings.KeyBinding;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraftforge.common.MinecraftForge;
@@ -13,6 +16,7 @@ import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.common.MinecraftForge; // Added this import
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,6 +28,8 @@ public class ExampleMod
 {
     // Directly reference a log4j logger.
     private static final Logger LOGGER = LogManager.getLogger();
+
+    public static KeyBinding peeingKey;
 
     public ExampleMod() {
         // Register the setup method for modloading
@@ -37,6 +43,7 @@ public class ExampleMod
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new KeyInputHandler()); // Added this line
     }
 
     private void setup(final FMLCommonSetupEvent event)
@@ -49,6 +56,9 @@ public class ExampleMod
     private void doClientStuff(final FMLClientSetupEvent event) {
         // do something that can only be done on the client
         LOGGER.info("Got game settings {}", event.getMinecraftSupplier().get().options);
+
+        peeingKey = new KeyBinding("key.examplemod.peeing", GLFW.GLFW_KEY_R, "key.categories.examplemod");
+        ClientRegistry.registerKeyBinding(peeingKey);
     }
 
     private void enqueueIMC(final InterModEnqueueEvent event)
