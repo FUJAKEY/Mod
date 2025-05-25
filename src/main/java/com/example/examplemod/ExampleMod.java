@@ -29,6 +29,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent; // Added import
 import net.minecraftforge.fml.network.PacketDistributor; // Added import
 import net.minecraft.entity.player.ServerPlayerEntity; // Added import
+import net.minecraft.util.text.TranslationTextComponent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -136,11 +137,23 @@ public class ExampleMod
         if (event.phase == TickEvent.Phase.END) {
             if (!event.player.level.isClientSide) { // Server side only
                 event.player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
+                    float oldLevel = bladder.getBladderLevel(); // Get current level before adding
                     bladder.addBladderLevel(BLADDER_FILL_RATE);
-                    float newLevel = bladder.getBladderLevel();
+                    float newLevel = bladder.getBladderLevel(); // Get new level after adding
+
+                    // Check if bladder just became full
+                    if (oldLevel < 100.0f && newLevel >= 100.0f) {
+                        if (event.player instanceof ServerPlayerEntity) {
+                            ((ServerPlayerEntity) event.player).sendMessage(new TranslationTextComponent("message.examplemod.bladder.full"), event.player.getUUID());
+                        }
+                    }
+
+                    // Send update packet periodically
                     if (event.player.tickCount % 20 == 0) { // Send update once per second
                         PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) event.player), new SyncBladderDataPacket(newLevel));
                     }
+                    
+                    // Log bladder level periodically (optional, can be kept or removed)
                     if (event.player.tickCount % 200 == 0) { // Log every 200 ticks (10 seconds)
                         LOGGER.info("Player " + event.player.getName().getString() + " bladder: " + newLevel);
                     }

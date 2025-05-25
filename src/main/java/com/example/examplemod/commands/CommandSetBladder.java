@@ -25,10 +25,10 @@ public class CommandSetBladder {
                     float level = FloatArgumentType.getFloat(context, "level");
                     ServerPlayerEntity player = context.getSource().getPlayerOrException();
                     player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
-                        bladder.setBladderLevel(level / 100.0f); // Устанавливаем уровень, нормируя к диапазону 0.0-1.0
+                        bladder.setBladderLevel(level);
                         // Отправляем пакет для синхронизации данных с клиентом
                         PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncBladderDataPacket(bladder.getBladderLevel()));
-                        context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success"), true);
+                        context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success", String.format("%.0f", level)), true);
                     });
                     return 1;
                 })
@@ -39,10 +39,10 @@ public class CommandSetBladder {
                         ServerPlayerEntity player = EntityArgument.getPlayer(context, "player");
                         float level = FloatArgumentType.getFloat(context, "level");
                         player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
-                            bladder.setBladderLevel(level / 100.0f); // Устанавливаем уровень, нормируя к диапазону 0.0-1.0
+                            bladder.setBladderLevel(level);
                             // Отправляем пакет для синхронизации данных с клиентом
                             PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncBladderDataPacket(bladder.getBladderLevel()));
-                            context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success_other"), true);
+                            context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success_other", player.getName().getString(), String.format("%.0f", level)), true);
                         });
                         return 1;
                     })
