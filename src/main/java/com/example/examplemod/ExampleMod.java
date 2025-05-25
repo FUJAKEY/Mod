@@ -250,30 +250,32 @@ public class ExampleMod
                 if (entity instanceof FallingBlockEntity && entity.getPersistentData().contains("CustomPeeBlock") && entity.getPersistentData().getBoolean("CustomPeeBlock")) {
                     FallingBlockEntity fallingBlock = (FallingBlockEntity) entity;
 
-                    // Логика удаления:
-                    // 1. Если блок на земле и существует хотя бы короткое время (чтобы не удалить сразу при спавне, если он заспавнился в земле)
-                    //    `fallingBlock.time` - это внутренний счетчик FallingBlockEntity, если он > 0 и onGround, он скоро превратится в блок.
-                    //    `tickCount` - общее время жизни сущности в тиках.
                     boolean shouldRemove = false;
-                    if (fallingBlock.isOnGround() && fallingBlock.tickCount > 1) { // Коснулся земли
-                         // Дополнительно можно проверить fallingBlock.time, если нужно точнее контролировать превращение
-                         shouldRemove = true;
+                    // 1. Если блок на земле - удаляем немедленно.
+                    //    fallingBlock.time = 0; // Этот хак может помочь предотвратить превращение в блок до удаления.
+                                              // Однако, лучше сначала попробовать без него, просто remove().
+                    if (fallingBlock.isOnGround()) {
+                        shouldRemove = true;
                     }
 
                     // 2. Если блок "завис" в воздухе (почти не двигается) после некоторого времени
-                    if (!shouldRemove && fallingBlock.getDeltaMovement().lengthSqr() < 0.001 && fallingBlock.tickCount > 20) { // 1 секунда в "зависшем" состоянии
+                    //    Это условие должно идти после проверки isOnGround, чтобы не удалить падающий блок преждевременно.
+                    if (!shouldRemove && fallingBlock.getDeltaMovement().lengthSqr() < 0.001 && fallingBlock.tickCount > 5) { // Уменьшил время для зависших до 5 тиков
                         shouldRemove = true;
                     }
 
                     // 3. Если блок существует слишком долго (например, пролетел сквозь мир или ошибка в логике)
-                    if (!shouldRemove && fallingBlock.tickCount > 100) { // 5 секунд максимальное время жизни
+                    if (!shouldRemove && fallingBlock.tickCount > 60) { // Уменьшил максимальное время жизни до 3 секунд
                         shouldRemove = true;
                         // ExampleMod.LOGGER.debug("Removing CustomPeeBlock due to timeout: " + fallingBlock.getUUID());
                     }
                     
                     if (shouldRemove) {
+                        // Попытка установить Time в 0 перед удалением, чтобы он точно не превратился в блок в этот же тик.
+                        // Это может быть излишним, если remove() происходит немедленно и прерывает дальнейшую логику сущности.
+                        // fallingBlock.time = 0; // Попробуем без этого сначала. Если блоки все еще ставятся, можно раскомментировать.
                         fallingBlock.remove(); // Удаляем сущность
-                        // ExampleMod.LOGGER.debug("Removed CustomPeeBlock: " + fallingBlock.getUUID());
+                        // ExampleMod.LOGGER.debug("Removed CustomPeeBlock: " + fallingBlock.getStringUUID() + " at tick " + fallingBlock.tickCount);
                     }
                 }
             }
