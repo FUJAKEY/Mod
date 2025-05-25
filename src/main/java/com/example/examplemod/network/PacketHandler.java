@@ -28,5 +28,17 @@ public class PacketHandler {
                 SyncBladderDataPacket::new, // Uses the PacketBuffer constructor
                 SyncBladderDataPacket::handle
         );
+        INSTANCE.registerMessage(id++,
+                StartPeeingPacket.class,
+                StartPeeingPacket::encode,
+                StartPeeingPacket::decode,
+                StartPeeingPacket::handle
+        );
+        INSTANCE.registerMessage(id++,
+                StopPeeingPacket.class,
+                StopPeeingPacket::encode,
+                StopPeeingPacket::decode,
+                StopPeeingPacket::handle
+        );
     }
 }

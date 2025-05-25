@@ -4,6 +4,7 @@ import net.minecraft.util.math.MathHelper;
 
 public class Bladder implements IBladder {
     private float bladderLevel;
+    private boolean peeing = false;
 
     public Bladder() {
         this.bladderLevel = 100.0f; // Default to full bladder
@@ -27,5 +28,15 @@ public class Bladder implements IBladder {
     @Override
     public void consumeBladderLevel(float amount) {
         this.setBladderLevel(this.bladderLevel - amount);
+    }
+
+    @Override
+    public boolean isPeeing() {
+        return this.peeing;
+    }
+
+    @Override
+    public void setPeeing(boolean isPeeing) {
+        this.peeing = isPeeing;
     }
 }

@@ -30,6 +30,8 @@ import net.minecraftforge.event.entity.player.PlayerEvent; // Added import
 import net.minecraftforge.fml.network.PacketDistributor; // Added import
 import net.minecraft.entity.player.ServerPlayerEntity; // Added import
 import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -49,6 +51,7 @@ public class ExampleMod
     public static final Logger LOGGER = LogManager.getLogger();
 
     private static final float BLADDER_FILL_RATE = 0.002f; // Changed value from 0.01f
+    private static final float PEEING_RATE_PER_TICK = 0.5f; // 10 units per second (0.5 units * 20 ticks/sec)
 
     public static KeyBinding peeingKey;
 
@@ -135,27 +138,72 @@ public class ExampleMod
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
-            if (!event.player.level.isClientSide) { // Server side only
-                event.player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
-                    float oldLevel = bladder.getBladderLevel(); // Get current level before adding
-                    bladder.addBladderLevel(BLADDER_FILL_RATE);
-                    float newLevel = bladder.getBladderLevel(); // Get new level after adding
+            if (!event.player.level.isClientSide) {
+                if (!(event.player instanceof ServerPlayerEntity)) {
+                    return;
+                }
+                ServerPlayerEntity serverPlayer = (ServerPlayerEntity) event.player;
 
-                    // Check if bladder just became full
-                    if (oldLevel < 100.0f && newLevel >= 100.0f) {
-                        if (event.player instanceof ServerPlayerEntity) {
-                            ((ServerPlayerEntity) event.player).sendMessage(new TranslationTextComponent("message.examplemod.bladder.full"), event.player.getUUID());
+                serverPlayer.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
+                    float initialLevelThisTick = bladder.getBladderLevel(); // Level at the very start of this player's tick processing
+
+                    // 1. Process peeing action (reduces level)
+                    if (bladder.isPeeing()) {
+                        if (bladder.getBladderLevel() > 0) {
+                            bladder.consumeBladderLevel(PEEING_RATE_PER_TICK);
+                            if (bladder.getBladderLevel() == 0) {
+                                bladder.setPeeing(false);
+                            }
+                        } else {
+                            bladder.setPeeing(false);
                         }
                     }
 
-                    // Send update packet periodically
-                    if (event.player.tickCount % 20 == 0) { // Send update once per second
-                        PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) event.player), new SyncBladderDataPacket(newLevel));
+                    // 2. Process bladder filling (natural, increases level)
+                    if (!bladder.isPeeing() && bladder.getBladderLevel() < 100.0f) {
+                        float levelBeforeNaturalFill = bladder.getBladderLevel();
+                        bladder.addBladderLevel(BLADDER_FILL_RATE);
+                        if (levelBeforeNaturalFill < 100.0f && bladder.getBladderLevel() >= 100.0f) {
+                            serverPlayer.sendMessage(new TranslationTextComponent("message.examplemod.bladder.full"), serverPlayer.getUUID());
+                        }
                     }
+
+                    // --- Логика негативных эффектов ---
+                    float currentBladderLevel = bladder.getBladderLevel();
+                    int effectDuration = 105; // Длительность эффекта ~5 секунд (20 тиков = 1 секунда)
+
+                    // Сначала проверяем самые строгие условия, чтобы избежать многократного наложения эффектов
+                    // или чтобы более сильные эффекты перезаписывали более слабые, если они одного типа.
                     
-                    // Log bladder level periodically (optional, can be kept or removed)
-                    if (event.player.tickCount % 200 == 0) { // Log every 200 ticks (10 seconds)
-                        LOGGER.info("Player " + event.player.getName().getString() + " bladder: " + newLevel);
+                    // Уровень > 95%
+                    if (currentBladderLevel > 95.0f) {
+                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, effectDuration, 1, false, true)); // Замедление II
+                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.CONFUSION, effectDuration, 0, false, false));       // Тошнота
+                    } 
+                    // Уровень > 85% и <= 95%
+                    else if (currentBladderLevel > 85.0f) {
+                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, effectDuration, 0, false, true)); // Замедление I
+                        // Даем Тошноту, но короче, если хотим чтобы она была менее навязчивой на этом уровне
+                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.CONFUSION, effectDuration / 2, 0, false, false)); 
+                    } 
+                    // Уровень > 70% и <= 85%
+                    else if (currentBladderLevel > 70.0f) {
+                        serverPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, effectDuration, 0, false, false)); // Замедление I (без частиц)
+                    }
+                    // Если уровень <= 70%, эффекты, наложенные этим модом, должны сами истечь,
+                    // так как мы их не обновляем. Если игрок выпил молоко или умер, они также снимутся.
+                    // --- Конец логики негативных эффектов ---
+                    
+                    // 3. Sync if level changed from the start of the tick, or periodically
+                    if (bladder.getBladderLevel() != initialLevelThisTick || event.player.tickCount % 20 == 0) {
+                        PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new SyncBladderDataPacket(bladder.getBladderLevel()));
+                    }
+
+                    // 4. Logging
+                    if (event.player.tickCount % 200 == 0) {
+                        LOGGER.info("Player " + serverPlayer.getName().getString() + 
+                                    " bladder: " + String.format("%.2f", bladder.getBladderLevel()) + 
+                                    ", isPeeing: " + bladder.isPeeing());
                     }
                 });
             }
