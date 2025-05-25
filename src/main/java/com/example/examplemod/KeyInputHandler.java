@@ -1,15 +1,17 @@
 package com.example.examplemod;
 
+import com.example.examplemod.network.EmptyBladderPacket;
+import com.example.examplemod.network.PacketHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.player.ClientPlayerEntity;
-import net.minecraft.particles.ParticleTypes;
-import net.minecraft.util.math.vector.Vector3d;
+// import net.minecraft.particles.ParticleTypes; // Commented out
+// import net.minecraft.util.math.vector.Vector3d; // Commented out
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class KeyInputHandler {
 
-    private boolean wasPeeingKeyPressed = false;
+    private boolean wasPeeingKeyPressed = false; // Still useful to send packet only once per press
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
@@ -21,15 +23,16 @@ public class KeyInputHandler {
 
             boolean isPeeingKeyDown = ExampleMod.peeingKey.isDown();
 
-            if (isPeeingKeyDown) {
-                player.setShiftKeyDown(true); // Make the player sneak
+            if (isPeeingKeyDown && !wasPeeingKeyPressed) {
+                PacketHandler.INSTANCE.sendToServer(new EmptyBladderPacket());
+                // player.setShiftKeyDown(true); // Removed
 
-                // Particle spawning logic
+                // Particle spawning logic - Commented out
+                /*
                 if (player.level.random.nextFloat() < 0.33f) {
                     Vector3d lookVector = player.getLookAngle();
                     double spawnX = player.getX() + lookVector.x * 0.5;
-                    // Adjust Y to be lower, around waist height. Player's eye height is getEyeHeight(), so subtract a bit.
-                    double spawnY = player.getY() + player.getEyeHeight() - 0.8; 
+                    double spawnY = player.getY() + player.getEyeHeight() - 0.8;
                     double spawnZ = player.getZ() + lookVector.z * 0.5;
 
                     player.level.addParticle(ParticleTypes.DRIPPING_WATER,
@@ -38,11 +41,12 @@ public class KeyInputHandler {
                             (Math.random() - 0.5) * 0.1,
                             (Math.random() - 0.5) * 0.1);
                 }
-
-            } else if (wasPeeingKeyPressed) {
-                // Key was pressed last tick but not now (released)
-                player.setShiftKeyDown(false); // Make the player stop sneaking
+                */
             }
+            /* else if (!isPeeingKeyDown && wasPeeingKeyPressed) { // Key released
+                // player.setShiftKeyDown(false); // Removed
+            }
+            */
             wasPeeingKeyPressed = isPeeingKeyDown;
         }
     }

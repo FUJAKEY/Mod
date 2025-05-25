@@ -1,14 +1,21 @@
 package com.example.examplemod;
 
+import com.example.examplemod.capabilities.Bladder;
+import com.example.examplemod.capabilities.BladderProvider;
+import com.example.examplemod.capabilities.BladderStorage;
+import com.example.examplemod.capabilities.IBladder;
+import com.example.examplemod.network.PacketHandler; // Added import
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraftforge.fml.client.registry.ClientRegistry;
-import org.lwjgl.glfw.GLFW;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.CapabilityInject;
+import net.minecraftforge.common.capabilities.CapabilityManager;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -16,9 +23,14 @@ import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.common.MinecraftForge; // Added this import
+import net.minecraftforge.event.TickEvent; // Added import
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.glfw.GLFW;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks; // Keep this if used, remove if not.
+import net.minecraftforge.event.RegistryEvent; // Keep this if used, remove if not.
+import net.minecraftforge.fml.InterModComms; // Keep this if used, remove if not.
 
 import java.util.stream.Collectors;
 
@@ -26,10 +38,16 @@ import java.util.stream.Collectors;
 @Mod("examplemod")
 public class ExampleMod
 {
+    public static final String MOD_ID = "examplemod";
     // Directly reference a log4j logger.
-    private static final Logger LOGGER = LogManager.getLogger();
+    public static final Logger LOGGER = LogManager.getLogger();
+
+    private static final float BLADDER_FILL_RATE = 0.01f; // Added constant
 
     public static KeyBinding peeingKey;
+
+    @CapabilityInject(IBladder.class)
+    public static Capability<IBladder> BLADDER_CAP = null;
 
     public ExampleMod() {
         // Register the setup method for modloading
@@ -43,14 +61,16 @@ public class ExampleMod
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
-        MinecraftForge.EVENT_BUS.register(new KeyInputHandler()); // Added this line
+        MinecraftForge.EVENT_BUS.register(new KeyInputHandler());
     }
 
     private void setup(final FMLCommonSetupEvent event)
     {
         // some preinit code
         LOGGER.info("HELLO FROM PREINIT");
-        LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.getRegistryName());
+        CapabilityManager.INSTANCE.register(IBladder.class, new BladderStorage(), Bladder::new);
+        PacketHandler.register(); // Added this line
+        LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.getRegistryName()); // Example line, can be removed if Blocks isn't used
     }
 
     private void doClientStuff(final FMLClientSetupEvent event) {
@@ -89,6 +109,33 @@ public class ExampleMod
         public static void onBlocksRegistry(final RegistryEvent.Register<Block> blockRegistryEvent) {
             // register a new block here
             LOGGER.info("HELLO from Register Block");
+        }
+    }
+
+    @SubscribeEvent
+    public void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
+        if (event.getObject() instanceof PlayerEntity) {
+            BladderProvider provider = new BladderProvider();
+            event.addCapability(new ResourceLocation(MOD_ID, "bladder"), provider);
+            // The ICapabilitySerializable framework handles invalidation.
+            // For LazyOptional, invalidation might be needed if the provider itself manages the LazyOptional's lifecycle directly.
+            // However, in this setup, BladderProvider creates its own LazyOptional, and the capability system
+            // typically handles when to invalidate capabilities attached to entities (e.g., on death or detach).
+            // If specific invalidation logic is needed (e.g. player death), it would be handled by listening to player events.
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            if (!event.player.level.isClientSide) { // Server side only
+                event.player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
+                    bladder.addBladderLevel(BLADDER_FILL_RATE);
+                    if (event.player.tickCount % 200 == 0) { // Log every 200 ticks (10 seconds)
+                        LOGGER.info("Player " + event.player.getName().getString() + " bladder: " + bladder.getBladderLevel());
+                    }
+                });
+            }
         }
     }
 }
