@@ -6,6 +6,7 @@ import com.example.examplemod.capabilities.BladderStorage;
 import com.example.examplemod.capabilities.IBladder;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.network.SyncBladderDataPacket; // Added import
+import com.example.examplemod.commands.CommandSetBladder;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -103,6 +104,7 @@ public class ExampleMod
     public void onServerStarting(FMLServerStartingEvent event) {
         // do something when the server starts
         LOGGER.info("HELLO from server starting");
+        CommandSetBladder.register(event.getServer().getCommands().getDispatcher()); // Добавленная строка
     }
 
     // You can use EventBusSubscriber to automatically subscribe events on the contained class (this is subscribing to the MOD
