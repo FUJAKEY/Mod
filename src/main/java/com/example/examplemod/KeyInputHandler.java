@@ -51,7 +51,10 @@ public class KeyInputHandler {
             boolean isPeeingKeyDown = ExampleMod.peeingKey.isDown();
             if (isPeeingKeyDown && !wasPeeingKeyDown) {
                 // Key was just pressed
-                PacketHandler.INSTANCE.sendToServer(new StartPeeingPacket());
+                // Только отправляем пакет, если уровень мочевого пузыря > 0
+                if (ClientBladderData.currentBladderLevel > 0) {
+                    PacketHandler.INSTANCE.sendToServer(new StartPeeingPacket());
+                }
             } else if (!isPeeingKeyDown && wasPeeingKeyDown) {
                 // Key was just released
                 PacketHandler.INSTANCE.sendToServer(new StopPeeingPacket());

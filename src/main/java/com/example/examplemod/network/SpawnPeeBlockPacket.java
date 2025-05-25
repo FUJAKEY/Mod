@@ -1,9 +1,9 @@
 package com.example.examplemod.network;
 
 import com.example.examplemod.ExampleMod;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.item.FallingBlockEntity;
+import net.minecraft.entity.item.ItemEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.math.vector.Vector3d; // Для 1.16.5
@@ -37,33 +37,37 @@ public class SpawnPeeBlockPacket {
 
             player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
                 if (bladder.isPeeing() && bladder.getBladderLevel() > 0) {
-                    BlockState blockState = Blocks.YELLOW_CONCRETE.defaultBlockState();
-                    double forwardOffset = 0.4; // Смещение вперед от игрока
-                    double upwardOffset = player.getEyeHeight() * 0.35; // Чуть ниже уровня глаз, на уровне груди/живота
+                    // --- Новый код для ItemEntity ---
+                    ItemStack itemStack = new ItemStack(Items.YELLOW_CONCRETE);
+                    double forwardOffset = 0.4;
+                    double upwardOffset = player.getEyeHeight() * 0.35;
 
-                    Vector3d lookVector = player.getViewVector(1.0F); // Направление взгляда
-                    // Начальная позиция для блока
+                    Vector3d lookVector = player.getViewVector(1.0F);
                     double x = player.getX() + lookVector.x * forwardOffset;
-                    double y = player.getY() + upwardOffset;
+                    double y = player.getY() + upwardOffset - 0.2; // Немного ниже для предмета, чтобы не появлялся слишком высоко
                     double z = player.getZ() + lookVector.z * forwardOffset;
 
-                    FallingBlockEntity fallingBlock = new FallingBlockEntity(world, x, y, z, blockState);
-                    fallingBlock.getPersistentData().putBoolean("CustomPeeBlock", true); // Наш специальный тег
-                    fallingBlock.setNoGravity(false); // Убедимся, что гравитация включена
-                    fallingBlock.time = 1; // Установим time в 1, чтобы он не превратился в блок сразу, если заспавнится в блоке
-                                           // Также это поможет при проверке в WorldTickEvent
+                    ItemEntity itemEntity = new ItemEntity(world, x, y, z, itemStack);
+                    
+                    // Настройка, чтобы предмет нельзя было легко подобрать и он быстро исчез
+                    itemEntity.setNoPickUpDelay(); // Нельзя подобрать сразу
+                    itemEntity.setOwner(null);     // Нет владельца (может помочь с некоторыми взаимодействиями)
+                    itemEntity.setThrower(null);   // Нет того, кто бросил
+                    // Для 1.16.5 нет itemEntity.lifespan напрямую, но age увеличивается, и при 6000 он исчезает.
+                    // Чтобы он исчез через 3 секунды (60 тиков):
+                    itemEntity.age = 5940; // Устанавливаем возраст так, чтобы через 60 тиков он достиг 6000
 
-                    // Начальная скорость и направление для "струи"
-                    float power = 0.5f; // Сила струи
-                    float spread = 0.15f; // Разброс
+                    // Начальная скорость и направление
+                    float power = 0.3f; // Уменьшил силу для предметов, они легче
+                    float spread = 0.2f;
 
-                    fallingBlock.setDeltaMovement(
+                    itemEntity.setDeltaMovement(
                             lookVector.x * power + (world.random.nextFloat() - 0.5f) * spread,
-                            lookVector.y * power * 0.4f - 0.15f + (world.random.nextFloat() - 0.5f) * 0.1f, // Направлено немного вниз + случайность
+                            lookVector.y * power * 0.5f - 0.1f + (world.random.nextFloat() - 0.5f) * 0.15f, // Меньше вертикальной силы
                             lookVector.z * power + (world.random.nextFloat() - 0.5f) * spread
                     );
-
-                    world.addFreshEntity(fallingBlock); // addFreshEntity для 1.16.5
+                    
+                    world.addFreshEntity(itemEntity);
                 }
             });
         });
