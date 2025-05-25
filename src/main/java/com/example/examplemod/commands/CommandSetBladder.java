@@ -28,7 +28,7 @@ public class CommandSetBladder {
                         bladder.setBladderLevel(level / 100.0f); // Устанавливаем уровень, нормируя к диапазону 0.0-1.0
                         // Отправляем пакет для синхронизации данных с клиентом
                         PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncBladderDataPacket(bladder.getBladderLevel()));
-                        context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success", String.format("%.0f", level)), true);
+                        context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success"), true);
                     });
                     return 1;
                 })
@@ -42,7 +42,7 @@ public class CommandSetBladder {
                             bladder.setBladderLevel(level / 100.0f); // Устанавливаем уровень, нормируя к диапазону 0.0-1.0
                             // Отправляем пакет для синхронизации данных с клиентом
                             PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncBladderDataPacket(bladder.getBladderLevel()));
-                            context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success_other", player.getName().getString(), String.format("%.0f", level)), true);
+                            context.getSource().sendSuccess(new TranslationTextComponent("commands.examplemod.setbladder.success_other"), true);
                         });
                         return 1;
                     })
