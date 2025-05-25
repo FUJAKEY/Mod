@@ -32,6 +32,9 @@ import net.minecraft.entity.player.ServerPlayerEntity; // Added import
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.potion.EffectInstance;
 import net.minecraft.potion.Effects;
+import net.minecraft.entity.Pose;
+import net.minecraft.world.server.ServerWorld;
+import net.minecraft.entity.item.FallingBlockEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -147,15 +150,25 @@ public class ExampleMod
                 serverPlayer.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
                     float initialLevelThisTick = bladder.getBladderLevel(); // Level at the very start of this player's tick processing
 
-                    // 1. Process peeing action (reduces level)
+                    // 1. Process peeing action (reduces level) and player pose
                     if (bladder.isPeeing()) {
                         if (bladder.getBladderLevel() > 0) {
                             bladder.consumeBladderLevel(PEEING_RATE_PER_TICK);
-                            if (bladder.getBladderLevel() == 0) {
+                            if (serverPlayer.getPose() != Pose.CROUCHING) {
+                                serverPlayer.setPose(Pose.CROUCHING);
+                            }
+                            if (bladder.getBladderLevel() == 0) { // Если моча кончилась во время процесса
                                 bladder.setPeeing(false);
                             }
-                        } else {
+                        } else { // Если уровень уже был 0, но флаг isPeeing еще стоял
                             bladder.setPeeing(false);
+                        }
+                    }
+                    
+                    // Handle returning to STANDING pose if stopped peeing and not holding sneak
+                    if (!bladder.isPeeing() && serverPlayer.getPose() == Pose.CROUCHING) {
+                        if (!serverPlayer.isShiftKeyDown()) { // Only stand up if player is not manually sneaking
+                            serverPlayer.setPose(Pose.STANDING);
                         }
                     }
 
@@ -220,6 +233,50 @@ public class ExampleMod
                 PacketHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new SyncBladderDataPacket(currentLevel));
                 ExampleMod.LOGGER.debug("Sent initial bladder level {} to player {}", currentLevel, player.getName().getString());
             });
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldTick(TickEvent.WorldTickEvent event) {
+        if (!event.world.isClientSide && event.phase == TickEvent.Phase.END) {
+            if (!(event.world instanceof ServerWorld)) { // Дополнительная проверка типа мира
+                return;
+            }
+            ServerWorld serverWorld = (ServerWorld) event.world;
+
+            // Итерация по всем загруженным сущностям не очень оптимальна, но для начала подойдет.
+            // В идеале, лучше было бы отслеживать наши FallingBlockEntity в специальном списке.
+            for (Entity entity : serverWorld.getEntities().getAll()) { 
+                if (entity instanceof FallingBlockEntity && entity.getPersistentData().contains("CustomPeeBlock") && entity.getPersistentData().getBoolean("CustomPeeBlock")) {
+                    FallingBlockEntity fallingBlock = (FallingBlockEntity) entity;
+
+                    // Логика удаления:
+                    // 1. Если блок на земле и существует хотя бы короткое время (чтобы не удалить сразу при спавне, если он заспавнился в земле)
+                    //    `fallingBlock.time` - это внутренний счетчик FallingBlockEntity, если он > 0 и onGround, он скоро превратится в блок.
+                    //    `tickCount` - общее время жизни сущности в тиках.
+                    boolean shouldRemove = false;
+                    if (fallingBlock.isOnGround() && fallingBlock.tickCount > 1) { // Коснулся земли
+                         // Дополнительно можно проверить fallingBlock.time, если нужно точнее контролировать превращение
+                         shouldRemove = true;
+                    }
+
+                    // 2. Если блок "завис" в воздухе (почти не двигается) после некоторого времени
+                    if (!shouldRemove && fallingBlock.getDeltaMovement().lengthSqr() < 0.001 && fallingBlock.tickCount > 20) { // 1 секунда в "зависшем" состоянии
+                        shouldRemove = true;
+                    }
+
+                    // 3. Если блок существует слишком долго (например, пролетел сквозь мир или ошибка в логике)
+                    if (!shouldRemove && fallingBlock.tickCount > 100) { // 5 секунд максимальное время жизни
+                        shouldRemove = true;
+                        // ExampleMod.LOGGER.debug("Removing CustomPeeBlock due to timeout: " + fallingBlock.getUUID());
+                    }
+                    
+                    if (shouldRemove) {
+                        fallingBlock.remove(); // Удаляем сущность
+                        // ExampleMod.LOGGER.debug("Removed CustomPeeBlock: " + fallingBlock.getUUID());
+                    }
+                }
+            }
         }
     }
 }

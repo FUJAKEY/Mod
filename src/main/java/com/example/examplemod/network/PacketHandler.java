@@ -40,5 +40,11 @@ public class PacketHandler {
                 StopPeeingPacket::decode,
                 StopPeeingPacket::handle
         );
+        INSTANCE.registerMessage(id++,
+                SpawnPeeBlockPacket.class,
+                SpawnPeeBlockPacket::encode,
+                SpawnPeeBlockPacket::decode,
+                SpawnPeeBlockPacket::handle
+        );
     }
 }

@@ -4,6 +4,7 @@ import com.example.examplemod.network.EmptyBladderPacket;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.network.StartPeeingPacket;
 import com.example.examplemod.network.StopPeeingPacket;
+import com.example.examplemod.network.SpawnPeeBlockPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.event.TickEvent;
@@ -18,6 +19,7 @@ import com.example.examplemod.client.ClientBladderData;
 public class KeyInputHandler {
 
     private static boolean wasPeeingKeyDown = false;
+    private int peeBlockSpawnCooldown = 0;
 
     @SubscribeEvent
     public void onKeyInput(InputEvent.KeyInputEvent event) {
@@ -56,37 +58,21 @@ public class KeyInputHandler {
             }
             wasPeeingKeyDown = isPeeingKeyDown;
 
-            // Particle generation logic
-            boolean isPeeingKeyDownNow = ExampleMod.peeingKey.isDown();
+            // Particle/Block generation logic
+            boolean isPeeingKeyDownNow = ExampleMod.peeingKey.isDown(); // Re-check current state for this logic block
 
-            if (isPeeingKeyDownNow && ClientBladderData.currentBladderLevel > 0 && Minecraft.getInstance().player != null && Minecraft.getInstance().level != null) {
-                PlayerEntity player = Minecraft.getInstance().player;
-                ClientWorld world = Minecraft.getInstance().level;
-
-                double forwardOffset = 0.4; 
-                double upwardOffset = player.getEyeHeight() * 0.3; 
-                double particleSpeedMultiplier = 0.2;
-
-                Vector3d lookVector = player.getViewVector(1.0F);
-                
-                double baseX = player.getX() + lookVector.x * forwardOffset;
-                double baseY = player.getY() + upwardOffset;
-                double baseZ = player.getZ() + lookVector.z * forwardOffset;
-
-                for (int i = 0; i < 3; i++) { 
-                    double spawnX = baseX + (world.random.nextDouble() - 0.5) * 0.3; 
-                    double spawnY = baseY + (world.random.nextDouble() - 0.5) * 0.2; 
-                    double spawnZ = baseZ + (world.random.nextDouble() - 0.5) * 0.3; 
-
-                    double motionX = lookVector.x * particleSpeedMultiplier + (world.random.nextDouble() - 0.5) * 0.05;
-                    double motionY = -0.10 + (world.random.nextDouble() - 0.1) * 0.05; 
-                    double motionZ = lookVector.z * particleSpeedMultiplier + (world.random.nextDouble() - 0.5) * 0.05;
-                
-                    world.addParticle(ParticleTypes.DRIPPING_WATER,
-                                      spawnX, spawnY, spawnZ, 
-                                      motionX, motionY, motionZ);
+            if (isPeeingKeyDownNow && ClientBladderData.currentBladderLevel > 0 && Minecraft.getInstance().player != null) {
+                if (this.peeBlockSpawnCooldown <= 0) {
+                    PacketHandler.INSTANCE.sendToServer(new SpawnPeeBlockPacket());
+                    this.peeBlockSpawnCooldown = 4; // Отправлять пакет каждые 4 тика (5 раз в секунду)
                 }
+                if (this.peeBlockSpawnCooldown > 0) {
+                    this.peeBlockSpawnCooldown--;
+                }
+            } else {
+                this.peeBlockSpawnCooldown = 0; // Сброс, если не мочится
             }
+            // Старый код генерации частиц DRIPPING_WATER нужно удалить или закомментировать.
         }
     }
 }
