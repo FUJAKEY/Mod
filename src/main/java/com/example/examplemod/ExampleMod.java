@@ -246,7 +246,7 @@ public class ExampleMod
 
             // Итерация по всем загруженным сущностям не очень оптимальна, но для начала подойдет.
             // В идеале, лучше было бы отслеживать наши FallingBlockEntity в специальном списке.
-            for (Entity entity : serverWorld.getEntities()) { 
+            for (Entity entity : serverWorld.getEntities().collect(Collectors.toList())) { 
                 if (entity instanceof FallingBlockEntity && entity.getPersistentData().contains("CustomPeeBlock") && entity.getPersistentData().getBoolean("CustomPeeBlock")) {
                     FallingBlockEntity fallingBlock = (FallingBlockEntity) entity;
 
