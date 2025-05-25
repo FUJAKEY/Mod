@@ -50,12 +50,12 @@ public class SpawnPeeBlockPacket {
                     ItemEntity itemEntity = new ItemEntity(world, x, y, z, itemStack);
                     
                     // Настройка, чтобы предмет нельзя было легко подобрать и он быстро исчез
-                    itemEntity.setNoPickUpDelay(); // Нельзя подобрать сразу
+                    itemEntity.setPickUpDelay(Short.MAX_VALUE); // Делаем предмет практически неподбираемым игроками
                     itemEntity.setOwner(null);     // Нет владельца (может помочь с некоторыми взаимодействиями)
                     itemEntity.setThrower(null);   // Нет того, кто бросил
                     // Для 1.16.5 нет itemEntity.lifespan напрямую, но age увеличивается, и при 6000 он исчезает.
                     // Чтобы он исчез через 3 секунды (60 тиков):
-                    itemEntity.age = 5940; // Устанавливаем возраст так, чтобы через 60 тиков он достиг 6000
+                    // itemEntity.age = 5940; // Удалено согласно задаче
 
                     // Начальная скорость и направление
                     float power = 0.3f; // Уменьшил силу для предметов, они легче
