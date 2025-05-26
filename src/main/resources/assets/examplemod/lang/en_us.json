@@ -1,10 +1,10 @@
 {
-  "key.categories.examplemod": "Example Mod",
-  "key.examplemod.peeing": "Peeing Action",
+  "key.categories.pipimod": "PipiMod",
+  "key.pipimod.peeing": "Peeing Action",
   "commands.examplemod.setbladder.success": "Bladder level set to %s%%",
   "commands.examplemod.setbladder.success_other": "Bladder level for %s set to %s%%",
   "commands.examplemod.setbladder.invalid_player": "Invalid player: %s",
   "commands.examplemod.setbladder.not_a_number": "'%s' is not a valid number",
   "commands.examplemod.setbladder.out_of_range": "Level must be between 0 and 100, got %s",
-  "message.examplemod.bladder.full": "Your bladder is full!"
+  "message.pipimod.bladder.full": "Your bladder is full!"
 }

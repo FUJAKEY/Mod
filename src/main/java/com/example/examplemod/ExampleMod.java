@@ -98,14 +98,14 @@ public class ExampleMod
         // do something that can only be done on the client
         LOGGER.info("Got game settings {}", event.getMinecraftSupplier().get().options);
 
-        peeingKey = new KeyBinding("key.examplemod.peeing", GLFW.GLFW_KEY_R, "key.categories.examplemod");
+        peeingKey = new KeyBinding("key.pipimod.peeing", GLFW.GLFW_KEY_R, "key.categories.pipimod");
         ClientRegistry.registerKeyBinding(peeingKey);
     }
 
     private void enqueueIMC(final InterModEnqueueEvent event)
     {
         // some example code to dispatch IMC to another mod
-        InterModComms.sendTo("examplemod", "helloworld", () -> { LOGGER.info("Hello world from the MDK"); return "Hello world";});
+        // InterModComms.sendTo("examplemod", "helloworld", () -> { LOGGER.info("Hello world from the MDK"); return "Hello world";});
     }
 
     private void processIMC(final InterModProcessEvent event)
@@ -186,7 +186,7 @@ public class ExampleMod
                         float levelBeforeNaturalFill = bladder.getBladderLevel();
                         bladder.addBladderLevel(BLADDER_FILL_RATE);
                         if (levelBeforeNaturalFill < 100.0f && bladder.getBladderLevel() >= 100.0f) {
-                            serverPlayer.sendMessage(new TranslationTextComponent("message.examplemod.bladder.full"), serverPlayer.getUUID());
+                            serverPlayer.sendMessage(new TranslationTextComponent("message.pipimod.bladder.full"), serverPlayer.getUUID());
                         }
                     }
 
