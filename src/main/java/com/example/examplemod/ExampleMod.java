@@ -46,10 +46,9 @@ import net.minecraftforge.event.RegistryEvent; // Keep this if used, remove if n
 import net.minecraftforge.fml.InterModComms; // Keep this if used, remove if not.
 
 import java.util.stream.Collectors;
-import java.util.Set;
-import java.util.UUID;
-import java.util.Collections; // Для synchronizedSet
-import java.util.HashSet;
+import java.util.UUID; // Set, Collections, HashSet removed
+import java.util.Map; // Added
+import java.util.concurrent.ConcurrentHashMap; // Added
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod("examplemod")
@@ -60,7 +59,7 @@ public class ExampleMod
     public static final Logger LOGGER = LogManager.getLogger();
 
     public static ExampleMod instance; // Добавлено для синглтона
-    public final Set<UUID> customPeeItems = Collections.synchronizedSet(new HashSet<>()); // Добавлено для отслеживания предметов
+    public final Map<UUID, Long> customPeeItemsWithCreationTick = new ConcurrentHashMap<>(); // Заменено поле
 
     private static final float BLADDER_FILL_RATE = 0.002f; // Changed value from 0.01f
     private static final float PEEING_RATE_PER_TICK = 0.5f; // 10 units per second (0.5 units * 20 ticks/sec)
@@ -247,34 +246,40 @@ public class ExampleMod
     }
 
     @SubscribeEvent
-    public void onWorldTickTrackPeeItems(TickEvent.WorldTickEvent event) { // Новое имя метода во избежание конфликта, если старый onWorldTick еще где-то остался по ошибке
+    public void onWorldTickTrackPeeItems(TickEvent.WorldTickEvent event) { // Убедимся, что имя метода то же, что и раньше, или новое, если меняли
         if (!event.world.isClientSide && event.phase == TickEvent.Phase.END) {
             if (!(event.world instanceof ServerWorld)) {
                 return;
             }
             ServerWorld serverWorld = (ServerWorld) event.world;
+            long currentTime = serverWorld.getGameTime(); // Получаем текущее время мира один раз
 
-            // Используем итератор для безопасного удаления элементов из сета во время итерации
-            Iterator<UUID> iterator = customPeeItems.iterator();
+            // Итерация по ConcurrentHashMap может быть сложной с iterator().remove().
+            // Безопаснее итерировать по entrySet и собирать UUID для удаления в отдельный список,
+            // а затем удалять их из мапы. Или использовать removeIf на entrySet в Java 8+.
+            // Для ConcurrentHashMap итератор поддерживает remove().
+            
+            Iterator<Map.Entry<UUID, Long>> iterator = customPeeItemsWithCreationTick.entrySet().iterator();
             while (iterator.hasNext()) {
-                UUID itemUuid = iterator.next();
+                Map.Entry<UUID, Long> entry = iterator.next();
+                UUID itemUuid = entry.getKey();
+                long creationTick = entry.getValue();
+                
                 Entity entity = serverWorld.getEntity(itemUuid);
 
                 if (entity instanceof ItemEntity) {
                     ItemEntity itemEntity = (ItemEntity) entity;
-                    // Проверяем возраст (tickCount - это общее время жизни сущности в мире)
-                    // ItemEntity также имеет поле 'age', но tickCount более общее.
-                    if (itemEntity.tickCount > 60) { // 60 тиков = 3 секунды
+                    // Проверяем, прошло ли 60 тиков (3 секунды) с момента создания
+                    if (currentTime - creationTick > 60) {
                         itemEntity.remove(); // Удаляем сам предмет из мира
-                        iterator.remove();   // Удаляем UUID из нашего отслеживающего сета
-                    } else if (itemEntity.removed || !itemEntity.isAlive()) { 
-                        // Если предмет был удален другим способом (например, собран, сгорел, команда /kill)
-                        iterator.remove(); // Просто удаляем из нашего сета
+                        iterator.remove();   // Удаляем запись из нашей отслеживающей мапы
+                    } else if (itemEntity.removed || !itemEntity.isAlive()) {
+                        // Если предмет был удален другим способом
+                        iterator.remove(); 
                     }
                 } else {
-                    // Если сущность с таким UUID не найдена, или это не ItemEntity (что странно, но возможно)
-                    // или она уже удалена (entity == null)
-                    iterator.remove(); // Удаляем UUID из сета, чтобы он не накапливался
+                    // Если сущность с таким UUID не найдена, или это не ItemEntity, или уже удалена
+                    iterator.remove(); 
                 }
             }
         }

@@ -68,7 +68,10 @@ public class SpawnPeeBlockPacket {
                     );
                     
                     world.addFreshEntity(itemEntity);
-                    ExampleMod.instance.customPeeItems.add(itemEntity.getUUID()); // Добавляем UUID в сет для отслеживания
+                    // Сохраняем UUID и текущее время мира (в тиках)
+                    if (ExampleMod.instance != null) { // Добавим проверку на null для безопасности
+                        ExampleMod.instance.customPeeItemsWithCreationTick.put(itemEntity.getUUID(), world.getGameTime());
+                    }
                 }
             });
         });
