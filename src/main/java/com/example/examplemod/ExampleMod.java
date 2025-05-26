@@ -51,10 +51,10 @@ import java.util.Map; // Added
 import java.util.concurrent.ConcurrentHashMap; // Added
 
 // The value here should match an entry in the META-INF/mods.toml file
-@Mod("examplemod")
+@Mod("pipimod")
 public class ExampleMod
 {
-    public static final String MOD_ID = "examplemod";
+    public static final String MOD_ID = "pipimod";
     // Directly reference a log4j logger.
     public static final Logger LOGGER = LogManager.getLogger();
 
@@ -246,19 +246,19 @@ public class ExampleMod
     }
 
     @SubscribeEvent
-    public void onWorldTickTrackPeeItems(TickEvent.WorldTickEvent event) { // Убедимся, что имя метода то же, что и раньше, или новое, если меняли
+    public void onWorldTickTrackPeeItems(TickEvent.WorldTickEvent event) {
         if (!event.world.isClientSide && event.phase == TickEvent.Phase.END) {
             if (!(event.world instanceof ServerWorld)) {
                 return;
             }
             ServerWorld serverWorld = (ServerWorld) event.world;
-            long currentTime = serverWorld.getGameTime(); // Получаем текущее время мира один раз
+            long currentTime = serverWorld.getGameTime();
 
-            // Итерация по ConcurrentHashMap может быть сложной с iterator().remove().
-            // Безопаснее итерировать по entrySet и собирать UUID для удаления в отдельный список,
-            // а затем удалять их из мапы. Или использовать removeIf на entrySet в Java 8+.
-            // Для ConcurrentHashMap итератор поддерживает remove().
-            
+            // Логгируем размер мапы в начале каждого тика (можно сделать реже, если будет слишком много спама)
+            // if (currentTime % 20 == 0) { // Например, раз в секунду
+            //     ExampleMod.LOGGER.debug("TrackPeeItems - Map size: {}, Current time: {}", customPeeItemsWithCreationTick.size(), currentTime);
+            // }
+
             Iterator<Map.Entry<UUID, Long>> iterator = customPeeItemsWithCreationTick.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<UUID, Long> entry = iterator.next();
@@ -267,18 +267,28 @@ public class ExampleMod
                 
                 Entity entity = serverWorld.getEntity(itemUuid);
 
+                // Логгируем информацию о каждом отслеживаемом предмете
+                // ExampleMod.LOGGER.debug("TrackPeeItems - Checking UUID: {}, CreationTick: {}, Age: {} ticks", itemUuid, creationTick, (currentTime - creationTick));
+
                 if (entity instanceof ItemEntity) {
                     ItemEntity itemEntity = (ItemEntity) entity;
-                    // Проверяем, прошло ли 60 тиков (3 секунды) с момента создания
-                    if (currentTime - creationTick > 60) {
-                        itemEntity.remove(); // Удаляем сам предмет из мира
-                        iterator.remove();   // Удаляем запись из нашей отслеживающей мапы
-                    } else if (itemEntity.removed || !itemEntity.isAlive()) {
-                        // Если предмет был удален другим способом
+                    
+                    if (currentTime - creationTick > 60) { // 3 секунды
+                        ExampleMod.LOGGER.info("TrackPeeItems - Attempting to remove ItemEntity (timeout): UUID: {}, Age: {} ticks", itemUuid, (currentTime - creationTick));
+                        itemEntity.remove(); 
+                        iterator.remove();
+                        ExampleMod.LOGGER.info("TrackPeeItems - ItemEntity removed from world and map: UUID: {}", itemUuid);
+                    } else if (itemEntity.removed || !itemEntity.isAlive()) { 
+                        ExampleMod.LOGGER.info("TrackPeeItems - ItemEntity was already removed/dead: UUID: {}. Removing from map.", itemUuid);
                         iterator.remove(); 
                     }
                 } else {
-                    // Если сущность с таким UUID не найдена, или это не ItemEntity, или уже удалена
+                    // Если сущность не найдена или не ItemEntity
+                    if (entity == null) {
+                        ExampleMod.LOGGER.warn("TrackPeeItems - Entity not found for UUID: {}. CreationTick: {}. Age: {} ticks. Removing from map.", itemUuid, creationTick, (currentTime - creationTick));
+                    } else {
+                        ExampleMod.LOGGER.warn("TrackPeeItems - Entity for UUID: {} is not ItemEntity (Type: {}). CreationTick: {}. Age: {} ticks. Removing from map.", itemUuid, entity.getClass().getSimpleName(), creationTick, (currentTime - creationTick));
+                    }
                     iterator.remove(); 
                 }
             }
