@@ -68,6 +68,7 @@ public class SpawnPeeBlockPacket {
                     );
                     
                     world.addFreshEntity(itemEntity);
+                    ExampleMod.instance.customPeeItems.add(itemEntity.getUUID()); // Добавляем UUID в сет для отслеживания
                 }
             });
         });
