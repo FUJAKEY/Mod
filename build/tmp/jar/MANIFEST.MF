@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
-Specification-Title: examplemod
+Specification-Title: pipimod
 Specification-Vendor: YourNameHere, OtherNameHere
 Specification-Version: 1
-Implementation-Title: Mod
-Implementation-Version: 1.0.0
+Implementation-Title: app
+Implementation-Version: 5.6.2
 Implementation-Vendor: YourNameHere, OtherNameHere
-Implementation-Timestamp: 2025-05-25T18:36:39+0000
+Implementation-Timestamp: 2025-05-28T14:15:02+0000
 
