@@ -7,6 +7,11 @@ import com.example.examplemod.capabilities.IBladder;
 import com.example.examplemod.network.PacketHandler;
 import com.example.examplemod.network.SyncBladderDataPacket; // Added import
 import com.example.examplemod.commands.CommandSetBladder;
+import com.example.examplemod.items.UrineItem;
+import com.example.examplemod.effects.BladderRushEffect;
+import net.minecraft.item.Item;
+import net.minecraft.potion.Effect;
+import net.minecraft.potion.EffectType;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -25,6 +30,9 @@ import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.fml.RegistryObject;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent; // Added import
 import net.minecraftforge.fml.network.PacketDistributor; // Added import
@@ -42,7 +50,7 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks; // Keep this if used, remove if not.
-import net.minecraftforge.event.RegistryEvent; // Keep this if used, remove if not.
+import net.minecraftforge.event.RegistryEvent; // Keep this if used, remove if not. - For RegistryEvents class, might be removed/modified
 import net.minecraftforge.fml.InterModComms; // Keep this if used, remove if not.
 
 import java.util.stream.Collectors;
@@ -60,6 +68,13 @@ public class ExampleMod
 
     public static ExampleMod instance; // Добавлено для синглтона
     public final Map<UUID, Long> customPeeItemsWithCreationTick = new ConcurrentHashMap<>(); // Заменено поле
+
+    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MOD_ID);
+    public static final DeferredRegister<Effect> EFFECTS = DeferredRegister.create(ForgeRegistries.POTIONS, MOD_ID); // POTIONS is the registry name for Effects
+
+    public static final RegistryObject<Item> URINE_ITEM = ITEMS.register("urine_item", UrineItem::new);
+    public static final RegistryObject<Effect> BLADDER_RUSH_EFFECT = EFFECTS.register("bladder_rush_effect", () -> new BladderRushEffect(EffectType.BENEFICIAL, 0xFFFF00)); // Example color: yellow
+
 
     private static final float BLADDER_FILL_RATE = 0.002f; // Changed value from 0.01f
     private static final float PEEING_RATE_PER_TICK = 0.5f; // 10 units per second (0.5 units * 20 ticks/sec)
@@ -79,6 +94,9 @@ public class ExampleMod
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::processIMC);
         // Register the doClientStuff method for modloading
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
+
+        ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
+        EFFECTS.register(FMLJavaModLoadingContext.get().getModEventBus());
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
@@ -125,6 +143,9 @@ public class ExampleMod
 
     // You can use EventBusSubscriber to automatically subscribe events on the contained class (this is subscribing to the MOD
     // Event bus for receiving Registry Events)
+    // The DeferredRegister approach replaces the need for this for items and effects.
+    // This class can be removed if it was only for block/item/effect registration handled by DeferredRegister.
+    // Kept for now as it might be used for other registry types or the onBlocksRegistry might be relevant for other blocks.
     @Mod.EventBusSubscriber(bus=Mod.EventBusSubscriber.Bus.MOD)
     public static class RegistryEvents {
         @SubscribeEvent
@@ -132,6 +153,7 @@ public class ExampleMod
             // register a new block here
             LOGGER.info("HELLO from Register Block");
         }
+        // Item and Effect registration is now handled by DeferredRegister
     }
 
     @SubscribeEvent
@@ -182,13 +204,20 @@ public class ExampleMod
                     }
 
                     // 2. Process bladder filling (natural, increases level)
+                    // Also, handle Bladder Rush effect increasing fill rate
+                    float currentFillRate = BLADDER_FILL_RATE;
+                    if (serverPlayer.hasEffect(BLADDER_RUSH_EFFECT.get())) {
+                        currentFillRate *= 2; // Example: Double fill rate with Bladder Rush
+                    }
+
                     if (!bladder.isPeeing() && bladder.getBladderLevel() < 100.0f) {
                         float levelBeforeNaturalFill = bladder.getBladderLevel();
-                        bladder.addBladderLevel(BLADDER_FILL_RATE);
+                        bladder.addBladderLevel(currentFillRate);
                         if (levelBeforeNaturalFill < 100.0f && bladder.getBladderLevel() >= 100.0f) {
                             serverPlayer.sendMessage(new TranslationTextComponent("message.pipimod.bladder.full"), serverPlayer.getUUID());
                         }
                     }
+
 
                     // --- Логика негативных эффектов ---
                     float currentBladderLevel = bladder.getBladderLevel();

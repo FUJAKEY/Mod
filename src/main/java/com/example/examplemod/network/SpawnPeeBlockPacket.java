@@ -1,9 +1,9 @@
 package com.example.examplemod.network;
 
-import com.example.examplemod.ExampleMod;
+import com.example.examplemod.ExampleMod; // Added import
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
+// import net.minecraft.item.Items; // No longer needed for YELLOW_CONCRETE
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.math.vector.Vector3d; // Для 1.16.5
@@ -38,7 +38,7 @@ public class SpawnPeeBlockPacket {
             player.getCapability(ExampleMod.BLADDER_CAP).ifPresent(bladder -> {
                 if (bladder.isPeeing() && bladder.getBladderLevel() > 0) {
                     // --- Новый код для ItemEntity ---
-                    ItemStack itemStack = new ItemStack(Items.YELLOW_CONCRETE);
+                    ItemStack itemStack = new ItemStack(ExampleMod.URINE_ITEM.get()); // Changed to URINE_ITEM
                     double forwardOffset = 0.4;
                     double upwardOffset = player.getEyeHeight() * 0.35;
 
@@ -49,8 +49,8 @@ public class SpawnPeeBlockPacket {
 
                     ItemEntity itemEntity = new ItemEntity(world, x, y, z, itemStack);
                     
-                    // Настройка, чтобы предмет нельзя было легко подобрать и он быстро исчез
-                    itemEntity.setPickUpDelay(70); // Задержка подбора ~3.5 секунды
+                    // Настройка, чтобы предмет можно было легко подобрать и он быстро исчез
+                    itemEntity.setPickUpDelay(10); // Changed to 10 (0.5 seconds)
                     // Для 1.16.5 нет itemEntity.lifespan напрямую, но age увеличивается, и при 6000 он исчезает.
                     // Чтобы он исчез через 3 секунды (60 тиков):
                     // itemEntity.age = 5940; // Удалено согласно задаче
@@ -67,9 +67,10 @@ public class SpawnPeeBlockPacket {
                     
                     world.addFreshEntity(itemEntity);
                     // Сохраняем UUID и текущее время мира (в тиках)
-                    if (ExampleMod.instance != null) { // Добавим проверку на null для безопасности
-                        ExampleMod.instance.customPeeItemsWithCreationTick.put(itemEntity.getUUID(), world.getGameTime());
-                    }
+                    // The following lines are removed/commented out as per instructions:
+                    // if (ExampleMod.instance != null) { 
+                    //     ExampleMod.instance.customPeeItemsWithCreationTick.put(itemEntity.getUUID(), world.getGameTime());
+                    // }
                 }
             });
         });
